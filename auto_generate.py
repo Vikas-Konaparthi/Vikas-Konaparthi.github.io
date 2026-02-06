@@ -3,12 +3,9 @@ import requests
 import datetime
 import random
 import feedparser
-from google import genai
+import json
 
-# ------------------------
-# Configure Gemini
-# ------------------------
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 today = datetime.date.today()
 filename = f"_posts/{today}-ai-trend.md"
@@ -46,9 +43,6 @@ def fetch_arxiv():
     except:
         return []
 
-# ------------------------
-# Combine Topics
-# ------------------------
 hn_titles = fetch_hn()
 arxiv_titles = fetch_arxiv()
 
@@ -61,7 +55,7 @@ if not all_topics:
 topic = random.choice(all_topics)
 
 # ------------------------
-# Generate Post with Gemini
+# Generate Post Using REST API
 # ------------------------
 prompt = f"""
 You are writing for a technical platform called Hilaight.
@@ -79,23 +73,38 @@ Requirements:
 - End with a thought-provoking question
 """
 
-response = client.models.generate_content(
-    model="gemini-1.5-flash-latest",
-    contents=[{
-        "role": "user",
-        "parts": [{"text": prompt}]
-    }],
-)
+url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
-# Safe extraction
+payload = {
+    "contents": [
+        {
+            "parts": [
+                {"text": prompt}
+            ]
+        }
+    ]
+}
+
+headers = {
+    "Content-Type": "application/json"
+}
+
+response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+if response.status_code != 200:
+    print("Gemini API Error:", response.text)
+    exit(1)
+
+result = response.json()
+
 try:
-    content = response.candidates[0].content.parts[0].text
+    content = result["candidates"][0]["content"]["parts"][0]["text"]
 except:
-    print("Gemini returned unexpected response format.")
+    print("Unexpected Gemini response:", result)
     exit(1)
 
 # ------------------------
-# Create Markdown
+# Write Markdown File
 # ------------------------
 markdown = f"""---
 title: "{topic}"

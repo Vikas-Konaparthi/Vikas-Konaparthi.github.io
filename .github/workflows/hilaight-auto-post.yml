@@ -1,0 +1,35 @@
+name: Hilaight AI Daily Post
+
+on:
+  schedule:
+    - cron: "0 4 * * *"  # Runs daily at 4 AM UTC
+  workflow_dispatch:
+
+jobs:
+  generate-post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install google-generativeai requests feedparser pytrends
+
+      - name: Run generator
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python auto_generate.py
+
+      - name: Commit & Push
+        run: |
+          git config --global user.name "hilaight-bot"
+          git config --global user.email "bot@hilaight.com"
+          git add _posts/
+          git commit -m "🤖 Hilaight AI daily post" || echo "No changes"
+          git push

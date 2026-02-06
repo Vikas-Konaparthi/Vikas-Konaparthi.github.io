@@ -55,7 +55,7 @@ if not all_topics:
 topic = random.choice(all_topics)
 
 # ------------------------
-# Generate Post Using REST API
+# Generate Post Using Gemini 2.5 Flash
 # ------------------------
 prompt = f"""
 You are writing for a technical platform called Hilaight.
@@ -71,9 +71,11 @@ Requirements:
 - 900–1200 words
 - Confident and analytical tone
 - End with a thought-provoking question
+- Avoid generic AI phrasing
+- Make it interesting for engineers
 """
 
-url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
 
 payload = {
     "contents": [
@@ -82,7 +84,11 @@ payload = {
                 {"text": prompt}
             ]
         }
-    ]
+    ],
+    "generationConfig": {
+        "temperature": 0.8,
+        "topP": 0.9
+    }
 }
 
 headers = {
@@ -104,7 +110,7 @@ except:
     exit(1)
 
 # ------------------------
-# Write Markdown File
+# Create Markdown File
 # ------------------------
 markdown = f"""---
 title: "{topic}"

@@ -16,10 +16,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install google-genai requests feedparser pytrends
+        run: |
+          pip uninstall -y google-generativeai || true
+          pip install --upgrade pip
+          pip install google-genai requests feedparser
 
       - name: Run generator
         env:

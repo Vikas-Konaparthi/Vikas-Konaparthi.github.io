@@ -1,29 +1,38 @@
 import os
 import requests
-import datetime
 import json
 import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
+# ------------------------
+# Config
+# ------------------------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-now = datetime.datetime.utcnow()
+if not GEMINI_API_KEY:
+    print("GEMINI_API_KEY not found.")
+    exit(1)
+
+# IST Time
+now = datetime.now(ZoneInfo("Asia/Kolkata"))
 date_str = now.strftime("%Y-%m-%d")
 
 # ------------------------
-# Fetch Top Hacker News Stories with Score
+# Fetch Top Hacker News Stories
 # ------------------------
 def fetch_hn_top():
     try:
         ids = requests.get(
             "https://hacker-news.firebaseio.com/v0/topstories.json",
             timeout=10
-        ).json()[:20]
+        ).json()[:25]
 
         stories = []
 
-        for id in ids:
+        for story_id in ids:
             item = requests.get(
-                f"https://hacker-news.firebaseio.com/v0/item/{id}.json",
+                f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json",
                 timeout=10
             ).json()
 
@@ -36,7 +45,8 @@ def fetch_hn_top():
 
         return stories
 
-    except:
+    except Exception as e:
+        print("Error fetching HN:", e)
         return []
 
 stories = fetch_hn_top()
@@ -46,24 +56,25 @@ if not stories:
     exit(0)
 
 # ------------------------
-# Sort by Engagement
+# Rank by Engagement
 # ------------------------
 stories.sort(key=lambda x: (x["score"] + x["comments"]), reverse=True)
-
 top_candidates = stories[:5]
 
 trend_context = "\n".join(
-    [f"{s['title']} (score: {s['score']}, comments: {s['comments']})"
-     for s in top_candidates]
+    [
+        f"{s['title']} (score: {s['score']}, comments: {s['comments']})"
+        for s in top_candidates
+    ]
 )
 
 # ------------------------
-# Ask Gemini to Choose Most Important Topic
+# Gemini Editorial Prompt
 # ------------------------
 prompt = f"""
-You are the editorial intelligence behind a serious technical publication called Hilaight.
+You are the editorial intelligence behind a serious global technical publication called Hilaight.
 
-Here are the most trending global technology topics right now:
+These are the most trending global technology stories right now:
 
 {trend_context}
 
@@ -79,11 +90,11 @@ Rules:
 - Break down architecture or technical reasoning.
 - Include system-level insights.
 - Include code examples if relevant.
-- Avoid hype or fluff.
+- Avoid hype, marketing tone, or fluff.
 - 1000–1500 words.
 - End with a strong thought-provoking question.
 
-Return format:
+Return format EXACTLY as:
 
 TITLE: <title here>
 
@@ -119,25 +130,25 @@ result = response.json()
 
 try:
     raw_text = result["candidates"][0]["content"]["parts"][0]["text"]
-except:
+except Exception as e:
     print("Unexpected Gemini response:", result)
     exit(1)
 
 # ------------------------
-# Extract Title and Content
+# Extract Title & Content
 # ------------------------
 title_match = re.search(r"TITLE:\s*(.+)", raw_text)
 content_match = re.search(r"CONTENT:\s*(.+)", raw_text, re.DOTALL)
 
 if not title_match or not content_match:
-    print("Could not parse response.")
+    print("Could not parse Gemini response.")
     exit(1)
 
 title = title_match.group(1).strip()
 content = content_match.group(1).strip()
 
 # ------------------------
-# Slug Generation
+# Generate SEO Slug
 # ------------------------
 slug = re.sub(r"[^a-zA-Z0-9\s-]", "", title)
 slug = slug.lower().strip()
@@ -146,11 +157,11 @@ slug = re.sub(r"\s+", "-", slug)
 filename = f"_posts/{date_str}-{slug}.md"
 
 # ------------------------
-# Write Markdown
+# Write Markdown File
 # ------------------------
 markdown = f"""---
 title: "{title}"
-date: {now.strftime('%Y-%m-%d %H:%M:%S +0000')}
+date: {now.strftime('%Y-%m-%d %H:%M:%S %z')}
 categories: [engineering, system-design, tech-news]
 tags: [trending, deep-dive]
 ---

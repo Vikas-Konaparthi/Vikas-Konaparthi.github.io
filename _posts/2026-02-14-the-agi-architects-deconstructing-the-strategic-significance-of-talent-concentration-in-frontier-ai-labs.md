@@ -1,6 +1,6 @@
 ---
 title: "The AGI Architects: Deconstructing the Strategic Significance of Talent Concentration in Frontier AI Labs"
-date: 2026-02-16 18:17:07 +0530
+date: 2026-02-14 18:17:07 +0530
 categories: [engineering, system-design, tech-news]
 tags: [trending, deep-dive]
 ---
